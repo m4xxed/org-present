@@ -99,9 +99,9 @@
   (widen)
   (if (org-current-level) ;inside any heading
       (progn
-        (org-present-top)
+        ;; (org-present-top)
         (or
-         (org-get-next-sibling) ;next top-level heading
+         (outline-next-heading) ;next heading
          (org-present-top)))    ;if that was last, go back to top before narrow
     ;; else handle title page before first heading
     (outline-next-heading))
@@ -114,17 +114,23 @@
   (if (org-current-level)
       (progn
         (widen)
-        (org-present-top)
-        (org-get-last-sibling)))
+        (outline-previous-heading)))
   (org-present-narrow)
   (org-present-run-after-navigate-functions))
 
+(defun org-narrow-to-heading ()
+  (org-narrow-to-subtree)
+  (save-excursion
+    (org-next-visible-heading 1)
+    (narrow-to-region (point-min) (point))))
+
 (defun org-present-narrow ()
-  "Show just current page; in a heading we narrow, else show title page (before first heading)."
+  "Show just current page.
+In a heading we narrow, else show title page (before first heading)."
   (if (org-current-level)
       (progn
-        (org-narrow-to-subtree)
-        (show-all))
+        (outline-show-all)
+        (org-narrow-to-heading))
     ;; else narrow to area before first heading
     (outline-next-heading)
     (narrow-to-region (point-min) (point))
@@ -178,6 +184,21 @@ mode. If you turn this off (by setting it to nil) make sure to set
 for hiding emphasis markers has a bad interaction with bullets. This combo also
 makes tabs work in presentation mode as in the rest of Org mode.")
 
+
+(defun org-present-caption-p ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (let ((line-contents (buffer-substring-no-properties (point) (line-end-position))))
+      (string-match-p (rx "#+caption") line-contents))))
+
+(defun org-present-name-p ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (let ((line-contents (buffer-substring-no-properties (point) (line-end-position))))
+      (string-match-p (rx "#+name") line-contents))))
+
 (defun org-present-add-overlays ()
   "Add overlays for this mode."
   (add-to-invisibility-spec '(org-present))
@@ -185,8 +206,12 @@ makes tabs work in presentation mode as in the rest of Org mode.")
     ;; hide org-mode options starting with #+
     (goto-char (point-min))
     (while (re-search-forward "^[[:space:]]*\\(#\\+\\)\\([^[:space:]]+\\).*" nil t)
-      (let ((end (if (org-present-show-option (match-string 2)) 2 0)))
-        (org-present-add-overlay (match-beginning 1) (match-end end))))
+      (unless (or (org-present-caption-p)
+                  (org-present-name-p))
+        (let ((end (if (org-present-show-option (match-string 2)) 2 0)))
+          (org-present-add-overlay (match-beginning 1) (match-end end)))))
+    ;; TODO hide org-babel properties but keep language
+    ;; TODO do not hide "captions" and "names"
     ;; hide :PROPERTIES: :END: block
     (progn (goto-char (point-min))
            (while (re-search-forward "^[[:space:]]*\\(:PROPERTIES:\\)\\(?:.\\|\n\\)*?\\(:END:\\).*$" nil t)
@@ -280,10 +305,10 @@ makes tabs work in presentation mode as in the rest of Org mode.")
   (setq org-present-mode nil))
 
 (defvar org-present-startup-folded nil
-  "Like `org-startup-folded', but for presentation mode. Also analogous to
-introduction of slide items by effects in other presentation programs: i.e., if
-you do not want to show the whole slide at first, but to unfurl it slowly, set
-this to non-nil.")
+  "Like `org-startup-folded', but for presentation mode.
+Also analogous to introduction of slide items by effects in other
+presentation programs: i.e., if you do not want to show the whole
+slide at first, but to unfurl it slowly, set this to non-nil.")
 
 (defvar org-present-after-navigate-functions nil
   "Abnormal hook run after org-present navigates to a new heading.")
