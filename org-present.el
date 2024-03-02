@@ -54,6 +54,9 @@
 ;; If you're on a Mac you might also want to look at the fullscreen patch here:
 ;; http://cloud.github.com/downloads/typester/emacs/feature-fullscreen.patch
 
+(require 'outline)
+(require 'org)
+
 (defvar org-present-mode-keymap (make-keymap) "org-present-mode keymap.")
 
 ;; left and right page keys
